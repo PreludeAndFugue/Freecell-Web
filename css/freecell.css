@@ -1,5 +1,5 @@
 body {
-    background-color: #610B0B;
+    background-color: #eeeeee;
     font-family: Trebuchet MS, Tahoma, Verdana, Arial, sans-serif;
     font-size: 0.8em;
 }
@@ -7,7 +7,6 @@ body {
 h1 {
     text-align: center;
     font-size: 2.5em;
-    color: white;
     margin: 1em 0em 0.3em 0em;
 }
 
@@ -84,7 +83,7 @@ ul {
     border-radius: 15px;
     -moz-border-radius: 15px;
     -webkit-border-radius: 15px;
-    -moz-box-shadow: 15px 15px 15px #2A0A0A;
-    -webkit-box-shadow: 15px 15px 15px #2A0A0A;
-    box-shadow: 15px 15px 15px #2A0A0A;
+    -moz-box-shadow: 15px 15px 15px #888888;
+    -webkit-box-shadow: 15px 15px 15px #888888;
+    box-shadow: 15px 15px 15px #888888;
 }
