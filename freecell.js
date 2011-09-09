@@ -276,7 +276,21 @@ Game.prototype.Deck = function() {
  */
 Game.prototype.Deck.prototype.shuffle = function() {
     var len, i, j, item_j;
-
+    
+    /*
+    // useful for debugging - deal the cards in optimal order
+    this.cards.sort(function(a, b) {
+        if (a.value < b.value) {
+            return -1;
+        }
+        if (a.value > b.value) {
+            return 1;
+        }
+        return 0;
+    });
+    this.cards.reverse();
+    */
+    
     len = this.cards.length;
     for (i = 0; i < len; i++) {
         j = Math.floor(len * Math.random());
@@ -370,6 +384,8 @@ UI.prototype.init = function() {
     this.new_game();
     // set up the help dialog and button
     this.help();
+    
+    this.setup_secret();
 
     // initialise draggables
     this.create_draggables();
@@ -512,6 +528,7 @@ UI.prototype.create_droppables = function() {
 
                     // has the game been completed
                     if (this_ui.game.is_game_won()) {
+                        this_ui.win_animation();
                         $('#windialog').dialog('open');
                         //return false;
                     }
@@ -568,6 +585,66 @@ UI.prototype.clear_drop = function() {
     }
     // empty the droppably array
     this.drop.length = 0;
+};
+
+/**
+ * Animate the cards at the end of a won game
+ */
+UI.prototype.win_animation = function() {
+    var i, $card_div, this_ui, v_x;
+    
+    for (i = 0; i < 53; i++) {
+        $card_div = $('#' + ((i + 4)%52 + 1));
+        this_ui = this;
+        v_x = 3 + 3*Math.random();
+        
+        // this is necessary for IE because you can't pass parameters to 
+        // function in setTimeout. So need to create a closure to bind
+        // the variables.
+        function animator($card_div, v_x, this_ui) {
+            setTimeout(function() {
+                this_ui.card_animation($card_div, v_x, 0, this_ui);
+            }, 250*i);
+        }
+        animator($card_div, v_x, this_ui);
+    }
+};
+
+/**
+ * Animation of a single card
+ */
+UI.prototype.card_animation = function($card_div, v_x, v_y, this_ui) {
+    var pos, top, left, bottom;
+
+    pos = $card_div.offset();
+    top = pos.top;
+    left = pos.left;
+
+    // calculate new vertical velocity v_y
+    bottom = $(window).height() - 96; // 96 is height of card div
+    v_y += 0.5; // acceleration
+    if (top + v_y + 3 > bottom) {
+        // bounce card at bottom, and add friction
+        v_y = -0.75*v_y; // friction = 0.75
+    }
+    
+    left -= v_x;
+    top += v_y;
+    $card_div.offset({top: top, left: left});
+    if (left > -80) {
+        // only continue animation if card is still visible
+        setTimeout(function() {
+            var cd = $card_div;
+            this_ui.card_animation(cd, v_x, v_y, this_ui);
+        }, 20);
+    }
+};
+
+UI.prototype.setup_secret = function() {
+    var this_ui = this;
+    $('#secret').click(function() {
+        this_ui.win_animation();
+    });
 };
 
 /**
