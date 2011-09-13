@@ -154,6 +154,8 @@ Game.prototype.col_bottom_cards = function() {
 
 /**
  * Move a card to a new location
+ *  drag_id is an integer
+ *  drop_id is a string
  */
 Game.prototype.move_card = function(drag_id, drop_id) {
     var drag_card, col_index;
@@ -184,6 +186,7 @@ Game.prototype.move_card = function(drag_id, drop_id) {
 
 /**
  * Return the card object and remove it from its current location
+ * card_id is an integer.
  */
 Game.prototype.pop_card = function(card_id) {
     var i, col, card;
@@ -276,7 +279,7 @@ Game.prototype.Deck = function() {
  */
 Game.prototype.Deck.prototype.shuffle = function() {
     var len, i, j, item_j;
-    
+
     /*
     // useful for debugging - deal the cards in optimal order
     this.cards.sort(function(a, b) {
@@ -290,7 +293,7 @@ Game.prototype.Deck.prototype.shuffle = function() {
     });
     this.cards.reverse();
     */
-    
+
     len = this.cards.length;
     for (i = 0; i < len; i++) {
         j = Math.floor(len * Math.random());
@@ -384,7 +387,7 @@ UI.prototype.init = function() {
     this.new_game();
     // set up the help dialog and button
     this.help();
-    
+
     this.setup_secret();
 
     // initialise draggables
@@ -461,6 +464,9 @@ UI.prototype.create_draggables = function() {
         });
         card_div.draggable('enable');
 
+        // add double-click event handling to all draggables
+        card_div.bind('dblclick', {this_ui: this_ui}, this_ui.dblclick_draggable);
+
         card_div.hover(
             // hover start
             function(event) {
@@ -472,6 +478,67 @@ UI.prototype.create_draggables = function() {
             }
         );
     }
+};
+
+/**
+ * When a draggable card is at the bottom of a column and it is double-clicked,
+ * check if it can be moved to a foundation column or empty freecell. If it can,
+ * then move it.
+ */
+UI.prototype.dblclick_draggable = function(event) {
+    var this_ui, drop_ids, card_id, drop_len, i, drop_id, drop_div;
+    this_ui = event.data.this_ui;
+
+    // the valid drop locations for this card
+    card_id = parseInt(this.id, 10);
+    drop_ids = this_ui.game.valid_drop_ids(card_id);
+    drop_len = drop_ids.length;
+
+    // can the card be moved to a suit cell
+    for (i = 0; i < drop_len; i++) {
+        drop_id = drop_ids[i];
+        if (drop_id.substr(0, 4) === 'suit') {
+            this_ui.dblclick_move(card_id, drop_id, this_ui);
+            return;
+        }
+    }
+    
+    // can the card be moved to an empty freecell
+    for (i = 0; i < drop_len; i++) {
+        drop_id = drop_ids[i];
+        if (drop_id.substr(0, 4) === 'free') {
+            console.log('can drop card on freecell');
+            this_ui.dblclick_move(card_id, drop_id, this_ui);
+            return;
+        }
+    }
+};
+
+UI.prototype.dblclick_move = function(card_id, drop_id, this_ui) {
+    var offset_end, offset_current, drop_div, left_end, top_end, left_move,
+        top_move, card, left_current, top_current;
+
+    card = $('#' + card_id);
+    drop_div = $('#' + drop_id);
+    offset_end = drop_div.offset();
+    offset_current = card.offset();
+    
+    left_end = offset_end['left'];
+    top_end = offset_end['top'];
+    left_current = offset_current['left'];
+    top_current = offset_current['top'];
+    
+    // add 3 for border
+    left_move = left_end - left_current + 3;
+    top_move = top_end - top_current + 3;
+    
+    card.animate({top: '+=' + top_move, left: '+=' + left_move},
+                  1000,
+                  function() {
+                        // tell the game the card has moved
+                        this_ui.game.move_card(card_id, drop_id);
+                        this_ui.clear_drag()();
+    });
 };
 
 /**
@@ -549,7 +616,6 @@ UI.prototype.create_droppables = function() {
  */
 UI.prototype.clear_drag = function() {
     var this_ui;
-
     this_ui = this;
 
     return function(event, ui) {
@@ -562,13 +628,19 @@ UI.prototype.clear_drag = function() {
             // force removal of highlight of cards that are dropped on the
             // suit cells
             $(this).removeClass('highlight');
+            // remove double-click handler
+            item.unbind('dblclick');
             item.draggable('destroy');
         }
         // empty the draggable array
         this_ui.drag.length = 0;
 
+        // empty the droppable array - this makes sure that drop array is
+        // cleared after an invalid drop
+        this_ui.clear_drop();
+
         // create new draggables
-    this_ui.create_draggables();
+        this_ui.create_draggables();
     };
 };
 
@@ -592,13 +664,13 @@ UI.prototype.clear_drop = function() {
  */
 UI.prototype.win_animation = function() {
     var i, $card_div, this_ui, v_x;
-    
+
     for (i = 0; i < 53; i++) {
         $card_div = $('#' + ((i + 4)%52 + 1));
         this_ui = this;
         v_x = 3 + 3*Math.random();
-        
-        // this is necessary for IE because you can't pass parameters to 
+
+        // this is necessary for IE because you can't pass parameters to
         // function in setTimeout. So need to create a closure to bind
         // the variables.
         function animator($card_div, v_x, this_ui) {
@@ -627,7 +699,7 @@ UI.prototype.card_animation = function($card_div, v_x, v_y, this_ui) {
         // bounce card at bottom, and add friction
         v_y = -0.75*v_y; // friction = 0.75
     }
-    
+
     left -= v_x;
     top += v_y;
     $card_div.offset({top: top, left: left});
@@ -660,7 +732,6 @@ UI.prototype.win = function() {
     });
 };
 
-
 /**
  * The help dialog
  */
@@ -673,7 +744,6 @@ UI.prototype.help = function() {
         zIndex: 5000,
         minWidth: 550
     });
-
 
     $('#help').click(function() {
         $('#helptext').dialog('open');
@@ -694,10 +764,12 @@ UI.prototype.new_game = function() {
 
 /******************************************************************************/
 
+var my_ui;
 $(document).ready(function() {
-    var g, ui;
+    //var g, my_ui;
+    var g;
 
     g = new Game();
-    ui = new UI(g);
-    ui.init();
+    my_ui = new UI(g);
+    my_ui.init();
 });
