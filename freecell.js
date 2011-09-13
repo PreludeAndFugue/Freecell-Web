@@ -489,6 +489,8 @@ UI.prototype.dblclick_draggable = function(event) {
     var this_ui, drop_ids, card_id, drop_len, i, drop_id, drop_div;
     this_ui = event.data.this_ui;
 
+    // TODO: fix the zIndex of a double-click move.
+
     // the valid drop locations for this card
     card_id = parseInt(this.id, 10);
     drop_ids = this_ui.game.valid_drop_ids(card_id);
@@ -502,7 +504,7 @@ UI.prototype.dblclick_draggable = function(event) {
             return;
         }
     }
-    
+
     // can the card be moved to an empty freecell
     for (i = 0; i < drop_len; i++) {
         drop_id = drop_ids[i];
@@ -522,16 +524,16 @@ UI.prototype.dblclick_move = function(card_id, drop_id, this_ui) {
     drop_div = $('#' + drop_id);
     offset_end = drop_div.offset();
     offset_current = card.offset();
-    
+
     left_end = offset_end['left'];
     top_end = offset_end['top'];
     left_current = offset_current['left'];
     top_current = offset_current['top'];
-    
+
     // add 3 for border
     left_move = left_end - left_current + 3;
     top_move = top_end - top_current + 3;
-    
+
     card.animate({top: '+=' + top_move, left: '+=' + left_move},
                   1000,
                   function() {
