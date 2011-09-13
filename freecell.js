@@ -280,8 +280,8 @@ Game.prototype.Deck = function() {
 Game.prototype.Deck.prototype.shuffle = function() {
     var len, i, j, item_j;
 
-    /*
     // useful for debugging - deal the cards in optimal order
+    /*
     this.cards.sort(function(a, b) {
         if (a.value < b.value) {
             return -1;
@@ -489,8 +489,6 @@ UI.prototype.dblclick_draggable = function(event) {
     var this_ui, drop_ids, card_id, drop_len, i, drop_id, drop_div;
     this_ui = event.data.this_ui;
 
-    // TODO: fix the zIndex of a double-click move.
-
     // the valid drop locations for this card
     card_id = parseInt(this.id, 10);
     drop_ids = this_ui.game.valid_drop_ids(card_id);
@@ -509,7 +507,6 @@ UI.prototype.dblclick_draggable = function(event) {
     for (i = 0; i < drop_len; i++) {
         drop_id = drop_ids[i];
         if (drop_id.substr(0, 4) === 'free') {
-            console.log('can drop card on freecell');
             this_ui.dblclick_move(card_id, drop_id, this_ui);
             return;
         }
@@ -518,7 +515,7 @@ UI.prototype.dblclick_draggable = function(event) {
 
 UI.prototype.dblclick_move = function(card_id, drop_id, this_ui) {
     var offset_end, offset_current, drop_div, left_end, top_end, left_move,
-        top_move, card, left_current, top_current;
+        top_move, card, left_current, top_current, max_z;
 
     card = $('#' + card_id);
     drop_div = $('#' + drop_id);
@@ -534,13 +531,30 @@ UI.prototype.dblclick_move = function(card_id, drop_id, this_ui) {
     left_move = left_end - left_current + 3;
     top_move = top_end - top_current + 3;
 
+    // before moving the card, stack it on top of all other cards
+    max_z = this_ui.card_max_zindex();
+    card.css('z-index', max_z + 1);
+
     card.animate({top: '+=' + top_move, left: '+=' + left_move},
-                  1000,
+                  250,
                   function() {
                         // tell the game the card has moved
                         this_ui.game.move_card(card_id, drop_id);
                         this_ui.clear_drag()();
+                        this_ui.is_won();
+
     });
+};
+
+UI.prototype.card_max_zindex = function() {
+    var max_z = 0;
+    $('.card').each(function(i, el) {
+        z_index = parseInt($(el).css('z-index'), 10);
+        if (!isNaN(z_index) && z_index > max_z) {
+            max_z = z_index;
+        }
+    });
+    return max_z;
 };
 
 /**
@@ -596,11 +610,7 @@ UI.prototype.create_droppables = function() {
                     this_ui.game.move_card(drag_id, this_id);
 
                     // has the game been completed
-                    if (this_ui.game.is_game_won()) {
-                        this_ui.win_animation();
-                        $('#windialog').dialog('open');
-                        //return false;
-                    }
+                    this_ui.is_won();
 
                     // reset ui so that there are no droppables
                     this_ui.clear_drop();
@@ -659,6 +669,14 @@ UI.prototype.clear_drop = function() {
     }
     // empty the droppably array
     this.drop.length = 0;
+};
+
+UI.prototype.is_won = function() {
+    if (this.game.is_game_won()) {
+        this.win_animation();
+        $('#windialog').dialog('open');
+        //return false;
+    }
 };
 
 /**
